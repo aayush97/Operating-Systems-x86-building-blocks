@@ -48,14 +48,16 @@ private:
     unsigned long base_frame_no;
     unsigned long nframes;
     unsigned long info_frame_no;
-    
+    ContFramePool * next;
+    ContFramePool * prev;
+    static ContFramePool *list_head;
+
     /* ---- STATE MANAGEMENT */
     
     enum class FrameState {Free, Used, HoS};
 
     FrameState get_state(unsigned long _frame_no);
     void set_state(unsigned long _frame_no, FrameState _state);
-    
     
 public:
 

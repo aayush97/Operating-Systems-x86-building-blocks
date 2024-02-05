@@ -126,6 +126,7 @@
 /*--------------------------------------------------------------------------*/
 /* METHODS FOR CLASS   C o n t F r a m e P o o l */
 /*--------------------------------------------------------------------------*/
+ContFramePool * ContFramePool::list_head = nullptr;
 
 ContFramePool::ContFramePool(unsigned long _base_frame_no,
                              unsigned long _n_frames,
@@ -148,6 +149,17 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
         set_state(0, FrameState::HoS);
     }
 
+    // Add this frame pool to the list of frame pools
+    if(ContFramePool::list_head == nullptr){
+        list_head = this;
+        next = nullptr;
+        prev = nullptr;
+    }else{
+        next = list_head;
+        prev = nullptr;
+        list_head->prev = this;
+        list_head = this;
+    }
     Console::puts("ContFramePool initialized\n");
 }
 
@@ -243,8 +255,23 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
 void ContFramePool::release_frames(unsigned long _first_frame_no)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    Console::puts("ContframePool::release_frames not implemented!\n");
-    assert(false);
+    ContFramePool * current = list_head;
+    while(current != nullptr)
+    {
+        if(current->base_frame_no <= _first_frame_no && current->base_frame_no + current->nframes > _first_frame_no)
+        {
+            assert(current->get_state(_first_frame_no) == FrameState::HoS);
+            unsigned long frame_no = _first_frame_no;
+            current->set_state(frame_no, FrameState::Free);
+            frame_no++;
+            while(current->get_state(frame_no) == FrameState::Used)
+            {
+                current->set_state(frame_no, FrameState::Free);
+                frame_no++;
+            }
+            return;
+        }
+    }
 }
 
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
