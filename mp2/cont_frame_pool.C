@@ -277,6 +277,5 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    Console::puts("ContframePool::need_info_frames not implemented!\n");
-    assert(false);
+    unsigned long needed_info_frames = (_n_frames + 4 * FRAME_SIZE - 1) / (4 * FRAME_SIZE);
 }
