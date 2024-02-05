@@ -132,8 +132,67 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
                              unsigned long _info_frame_no)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    Console::puts("ContframePool::Constructor not implemented!\n");
-    assert(false);
+    base_frame_no = _base_frame_no;
+    nframes = _n_frames;
+    info_frame_no = _info_frame_no;
+    if (info_frame_no == 0) {
+        bitmap = (unsigned char *) (base_frame_no * FRAME_SIZE);
+    } else {
+        bitmap = (unsigned char *) (info_frame_no * FRAME_SIZE);
+    }
+
+    for (unsigned long i = 0; i < nframes; i++) {
+        set_state(i, FrameState::Free);
+    }
+
+    if (info_frame_no == 0) {
+        set_state(0, FrameState::HoS);
+    }
+
+    Console::puts("ContFramePool initialized\n");
+}
+
+ContFramePool::FrameState ContFramePool::get_state(unsigned long _frame_no)
+{
+    unsigned int bitmap_index = _frame_no / 4;
+    unsigned int offset = (_frame_no % 4) * 2;
+    unsigned char mask = 0x3 << offset;
+
+    if ((bitmap[bitmap_index] & mask) == 0) {
+        return FrameState::Free;
+    } else if ((bitmap[bitmap_index] & mask) >> offset == 1) {
+        return FrameState::Used;
+    } else if ((bitmap[bitmap_index] & mask) >> offset == 2){
+        return FrameState::HoS;
+    }else {
+        Console::puts("Error: get_state\n");
+        assert(false);
+    }
+}
+
+void ContFramePool::set_state(unsigned long _frame_no, FrameState _state)
+{
+    unsigned int bitmap_index = _frame_no / 4;
+    
+
+    switch (_state) {
+    case FrameState::Free:
+        // set to 00 when freeing
+        unsigned char mask = 0x3 << ((_frame_no % 4) * 2);
+        bitmap[bitmap_index] &= ~mask;
+        break;
+    case FrameState::Used:
+        // set to 01 when used
+        unsigned char mask = 0x1 << ((_frame_no % 4) * 2);
+        bitmap[bitmap_index] |= mask;
+        break;
+    case FrameState::HoS:
+        // set to 10 when head of sequence
+        unsigned char mask = 0x2 << ((_frame_no % 4) * 2);
+        bitmap[bitmap_index] |= mask;
+        // bitmap[bitmap_index] &= ~mask;
+        break;
+    }
 }
 
 unsigned long ContFramePool::get_frames(unsigned int _n_frames)
@@ -147,8 +206,11 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
                                       unsigned long _n_frames)
 {
     // TODO: IMPLEMENTATION NEEEDED!
-    Console::puts("ContframePool::mark_inaccessible not implemented!\n");
-    assert(false);
+    unsigned long frame_no = _base_frame_no;
+    for (unsigned long i = 0; i < _n_frames; i++) {
+        set_state(frame_no, FrameState::Used);
+        frame_no++;
+    }
 }
 
 void ContFramePool::release_frames(unsigned long _first_frame_no)
