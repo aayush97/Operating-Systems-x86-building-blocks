@@ -131,7 +131,6 @@ ContFramePool::ContFramePool(unsigned long _base_frame_no,
                              unsigned long _n_frames,
                              unsigned long _info_frame_no)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
     base_frame_no = _base_frame_no;
     nframes = _n_frames;
     info_frame_no = _info_frame_no;
@@ -168,27 +167,28 @@ ContFramePool::FrameState ContFramePool::get_state(unsigned long _frame_no)
         Console::puts("Error: get_state\n");
         assert(false);
     }
+    return FrameState::HoS;
 }
 
 void ContFramePool::set_state(unsigned long _frame_no, FrameState _state)
 {
     unsigned int bitmap_index = _frame_no / 4;
-    
+    unsigned char mask;
 
     switch (_state) {
     case FrameState::Free:
         // set to 00 when freeing
-        unsigned char mask = 0x3 << ((_frame_no % 4) * 2);
+        mask = 0x3 << ((_frame_no % 4) * 2);
         bitmap[bitmap_index] &= ~mask;
         break;
     case FrameState::Used:
         // set to 01 when used
-        unsigned char mask = 0x1 << ((_frame_no % 4) * 2);
+        mask = 0x1 << ((_frame_no % 4) * 2);
         bitmap[bitmap_index] |= mask;
         break;
     case FrameState::HoS:
         // set to 10 when head of sequence
-        unsigned char mask = 0x2 << ((_frame_no % 4) * 2);
+        mask = 0x2 << ((_frame_no % 4) * 2);
         bitmap[bitmap_index] |= mask;
         // bitmap[bitmap_index] &= ~mask;
         break;
@@ -197,9 +197,36 @@ void ContFramePool::set_state(unsigned long _frame_no, FrameState _state)
 
 unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
-    Console::puts("ContframePool::get_frames not implemented!\n");
-    assert(false);
+    unsigned long frame_no = 0;
+    unsigned long count = 0;
+    while (frame_no < nframes)
+    {
+        if (get_state(frame_no) == FrameState::Free)
+        {
+            count++;
+            if (count == _n_frames)
+            {
+                for (unsigned long i = frame_no - _n_frames + 1; i <= frame_no; i++)
+                {
+                    if (i == frame_no - _n_frames + 1)
+                    {
+                        set_state(i, FrameState::HoS);
+                    }
+                    else
+                    {
+                        set_state(i, FrameState::Used);
+                    }
+                }
+                return frame_no - _n_frames + 1;
+            }
+        }
+        else
+        {
+            count = 0;
+        }
+        frame_no++;
+    }
+    return 0;
 }
 
 void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
