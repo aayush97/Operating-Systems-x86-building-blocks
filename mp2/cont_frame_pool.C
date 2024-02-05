@@ -278,4 +278,5 @@ unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
 {
     // TODO: IMPLEMENTATION NEEEDED!
     unsigned long needed_info_frames = (_n_frames + 4 * FRAME_SIZE - 1) / (4 * FRAME_SIZE);
+    return needed_info_frames;
 }
