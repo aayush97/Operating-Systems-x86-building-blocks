@@ -238,6 +238,8 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
         }
         frame_no++;
     }
+    Console::puts("Error: get_frames\n");
+    assert(false);
     return 0;
 }
 
@@ -271,6 +273,7 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
             }
             return;
         }
+        current = current->next;
     }
 }
 
