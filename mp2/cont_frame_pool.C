@@ -246,7 +246,6 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
 void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
                                       unsigned long _n_frames)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
     unsigned long frame_no = _base_frame_no;
     for (unsigned long i = 0; i < _n_frames; i++) {
         set_state(frame_no, FrameState::Used);
@@ -256,7 +255,6 @@ void ContFramePool::mark_inaccessible(unsigned long _base_frame_no,
 
 void ContFramePool::release_frames(unsigned long _first_frame_no)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
     ContFramePool * current = list_head;
     while(current != nullptr)
     {
@@ -279,7 +277,6 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
 
 unsigned long ContFramePool::needed_info_frames(unsigned long _n_frames)
 {
-    // TODO: IMPLEMENTATION NEEEDED!
     unsigned long needed_info_frames = (_n_frames + 4 * FRAME_SIZE - 1) / (4 * FRAME_SIZE);
     return needed_info_frames;
 }
