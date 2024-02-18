@@ -229,7 +229,7 @@ unsigned long ContFramePool::get_frames(unsigned int _n_frames)
                         set_state(i, FrameState::Used);
                     }
                 }
-                return frame_no - _n_frames + 1;
+                return  base_frame_no + frame_no - _n_frames + 1;
             }
         }
         else
