@@ -93,7 +93,84 @@ void PageTable::enable_paging()
 
 void PageTable::handle_fault(REGS * _r)
 {
-  assert(false);
-  Console::puts("handled page fault\n");
+   // Console::puts("Page Fault\n");
+   // read the offending address
+   unsigned long offending_addr = read_cr2();
+   char a[20];
+   // i_to_a(offending_addr, a);
+   // Console::puts("Page Fault at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+   // assert(false);
+   // find the page table entry
+   unsigned int pde_index = (offending_addr >> 22);
+   unsigned int pte_index = (offending_addr >> 12) & 0x3FF;
+   unsigned long * page_directory = current_page_table->page_directory;
+   unsigned long * page_table;
+
+   // check if the pde is valid and writable
+   if ((page_directory[pde_index] & 1) == 0)
+   {
+      // Console::puts("Page Directory Entry not valid\n");
+      // generate a valid page table for this pde
+      page_table = (unsigned long *)(kernel_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
+      page_directory[pde_index] = ((unsigned long)page_table) | 3;
+      for (unsigned int i = 0; i < Machine::PT_ENTRIES_PER_PAGE; i++)
+      {
+         page_table[i] = 0 | 2;
+      }
+   }else if((page_directory[pde_index] & 2) == 0)
+   {
+      Console::puts("Page Directory Entry not writable\n");
+      assert(false);
+   }else{
+      page_table = (unsigned long *) (page_directory[pde_index] & 0xFFFFF000);
+   }
+   // i_to_a(pde_index, a);
+   // Console::puts("Page Directory Entry at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+
+   // i_to_a((unsigned long) page_directory, a);
+   // Console::puts("Page Directory at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+
+   // i_to_a(pte_index, a);
+   // Console::puts("Page Table Entry at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+
+   // i_to_a((unsigned long) page_table, a);
+   // Console::puts("Page Table at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+
+   // i_to_a((unsigned long) page_table[pte_index], a);
+   // Console::puts("Page Table Entry Value ");
+   // Console::puts(a);
+   // Console::puts("\n");
+   // check if the pte is valid and writable
+   if ((page_table[pte_index] & 1) == 0)
+   {
+      // Console::puts("Page Table Entry not valid\n");
+      // map a valid frame for this pte
+      unsigned long frame =  process_mem_pool->get_frames(1) * Machine::PAGE_SIZE;
+      // i_to_a(frame, a);
+      // Console::puts("Mapped frame at ");
+      // Console::puts(a);
+      // Console::puts("\n");
+      page_table[pte_index] = frame | 3;
+      // assert(false);
+   }else if ((page_table[pte_index] & 2) == 0)
+   {
+      Console::puts("Page Table Entry not writable\n");
+      assert(false);
+   }
+
+   // flush the tlb
+   // write_cr3((unsigned long) current_page_table->page_directory);
+   // Console::puts("Page Fault Handled\n");
+
 }
 
