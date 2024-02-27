@@ -1,39 +1,22 @@
 /*
- File: kernel.C
- 
- Author: R. Bettati
- Department of Computer Science
- Texas A&M University
- Date  : 12/09/03
- 
- 
- This file has the main entry point to the operating system.
- 
- */
+    File: kernel.C
+
+    Author: R. Bettati
+            Department of Computer Science
+            Texas A&M University
+    Date  : 2017/06/20
 
 
-/*--------------------------------------------------------------------------*/
-/* INCLUDES */
-/*--------------------------------------------------------------------------*/
+    This file has the main entry point to the operating system.
 
-#include "machine.H"     /* LOW-LEVEL STUFF   */
-#include "console.H"
-#include "gdt.H"
-#include "idt.H"          /* LOW-LEVEL EXCEPTION MGMT. */
-#include "irq.H"
-#include "exceptions.H"
-#include "interrupts.H"
+*/
 
-#include "simple_keyboard.H" /* SIMPLE KB DRIVER */
-#include "simple_timer.H" /* TIMER MANAGEMENT */
-
-#include "page_table.H"
-#include "paging_low.H"
 
 /*--------------------------------------------------------------------------*/
 /* DEFINES */
 /*--------------------------------------------------------------------------*/
 
+#define GB * (0x1 << 30)
 #define MB * (0x1 << 20)
 #define KB * (0x1 << 10)
 #define KERNEL_POOL_START_FRAME ((2 MB) / Machine::PAGE_SIZE)
@@ -52,25 +35,96 @@
 /* NACCESS integer access (i.e. 4 bytes in each access) are made starting at address FAULT_ADDR */
 
 /*--------------------------------------------------------------------------*/
+/* INCLUDES */
+/*--------------------------------------------------------------------------*/
+
+#include "machine.H"        /* LOW-LEVEL STUFF */
+#include "console.H"
+#include "gdt.H"
+#include "idt.H"            /* LOW-LEVEL EXCEPTION MGMT. */
+#include "irq.H"
+#include "exceptions.H"
+#include "interrupts.H"
+
+#include "simple_keyboard.H" /* SIMPLE KB DRIVER */
+#include "simple_timer.H"   /* SIMPLE TIMER MANAGEMENT */
+
+#include "page_table.H"
+#include "paging_low.H"
+
+#include "vm_pool.H"
+
+/*--------------------------------------------------------------------------*/
+/* FORWARD REFERENCES FOR TEST CODE */
+/*--------------------------------------------------------------------------*/
+
+void TestPassed();
+void TestFailed();
+
+void GeneratePageTableMemoryReferences(unsigned long start_address, int n_references);
+void GenerateVMPoolMemoryReferences(VMPool *pool, int size1, int size2);
+
+/*--------------------------------------------------------------------------*/
+/* MEMORY ALLOCATION */
+/*--------------------------------------------------------------------------*/
+
+// Here we overload the new and delete operators to use our vmpools!
+
+VMPool *current_pool;
+
+typedef long unsigned int size_t;
+
+//replace the operator "new"
+void * operator new (size_t size) {
+  unsigned long a = current_pool->allocate((unsigned long)size);
+  return (void *)a;
+}
+
+//replace the operator "new[]"
+void * operator new[] (size_t size) {
+  unsigned long a = current_pool->allocate((unsigned long)size);
+  return (void *)a;
+}
+
+//replace the operator "delete"
+void operator delete (void * p, size_t s) {
+  current_pool->release((unsigned long)p);
+}
+
+//replace the operator "delete[]"
+void operator delete[] (void * p) {
+  current_pool->release((unsigned long)p);
+}
+
+/*--------------------------------------------------------------------------*/
+/* EXCEPTION HANDLERS */
+/*--------------------------------------------------------------------------*/
+
+/* -- EXAMPLE OF THE DIVISION-BY-ZERO HANDLER */
+
+void dbz_handler(REGS * r) {
+  Console::puts("DIVISION BY ZERO\n");
+  for(;;);
+}
+
+
+/*--------------------------------------------------------------------------*/
 /* MAIN ENTRY INTO THE OS */
 /*--------------------------------------------------------------------------*/
 
 int main() {
-    
-    /* -- We initialize the global descriptor table, console, and interrupt descriptor tables */
 
-    GDT::init();
-
+   GDT::init();
     Console::init();
-    Console::output_redirection(true);
-
     IDT::init();
     ExceptionHandler::init_dispatcher();
     IRQ::init();
     InterruptHandler::init_dispatcher();
-    
-    
-    /* -- EXAMPLE OF AN EXCEPTION HANDLER: Division-by-Zero  -- */
+
+    /* -- SEND OUTPUT TO TERMINAL -- */ 
+    Console::output_redirection(true);
+
+    /* -- EXAMPLE OF AN EXCEPTION HANDLER -- */
     
     class DBZ_Handler : public ExceptionHandler {
       /* We derive Division-by-Zero handler from ExceptionHandler 
@@ -87,7 +141,7 @@ int main() {
     ExceptionHandler::register_handler(0, &dbz_handler);
     
 
-    /* -- EXAMPLE OF AN INTERRUPT HANDLER: Very simple timer -- */
+    /* -- INITIALIZE THE TIMER (we use a very simple timer).-- */
     
     SimpleTimer timer(100); /* timer ticks every 10ms. */
     
@@ -100,101 +154,154 @@ int main() {
      It is important to install a timer handler, as we
      would get a lot of uncaptured interrupts otherwise. */
     
-    /* -- INSTALL INTERRUPT HANDLER FOR SIMPLE KEYBOARD -- */
-
+    /* -- INSTALL KEYBOARD HANDLER -- */
     SimpleKeyboard::init();
-    
-    /* NOTE: In the SimpleKeyboard::init() a private static object of
-       type SimpleKeyboard is created and its interrupt handler is
-       registered with the interrupt dispatcher. Subsequent calls to the
-       static function SimpleKeyboard::wait() look until a key is pressed.*/
+
+    Console::puts("after installing keyboard handler\n");
 
     /* -- ENABLE INTERRUPTS -- */
     
     Machine::enable_interrupts();
 
     /* -- INITIALIZE FRAME POOLS -- */
-    
+
     ContFramePool kernel_mem_pool(KERNEL_POOL_START_FRAME,
                                   KERNEL_POOL_SIZE,
                                   0);
 
-    unsigned long n_info_frames = ContFramePool::needed_info_frames(PROCESS_POOL_SIZE);
-    
-    unsigned long process_mem_pool_info_frame = kernel_mem_pool.get_frames(n_info_frames);
-    
+    unsigned long n_info_frames = 
+      ContFramePool::needed_info_frames(PROCESS_POOL_SIZE);
+
+    unsigned long process_mem_pool_info_frame = 
+      kernel_mem_pool.get_frames(n_info_frames);
+
     ContFramePool process_mem_pool(PROCESS_POOL_START_FRAME,
                                    PROCESS_POOL_SIZE,
                                    process_mem_pool_info_frame);
-    
+
     /* Take care of the hole in the memory. */
     process_mem_pool.mark_inaccessible(MEM_HOLE_START_FRAME, MEM_HOLE_SIZE);
-    
+
     /* -- INITIALIZE MEMORY (PAGING) -- */
-    
+
     /* ---- INSTALL PAGE FAULT HANDLER -- */
-    
+
     class PageFault_Handler : public ExceptionHandler {
-        /* We derive the page fault handler from ExceptionHandler 
-           and overload the method handle_exception. */
-    public:
-        virtual void handle_exception(REGS * _regs) {
-            PageTable::handle_fault(_regs);
-        }
+      /* We derive the page fault handler from ExceptionHandler 
+	 and overload the method handle_exception. */
+      public:
+      virtual void handle_exception(REGS * _regs) {
+        PageTable::handle_fault(_regs);
+      }
     } pagefault_handler;
-    
-    /* ---- Register the page fault handler for exception no.14 
+
+    /* ---- Register the page fault handler for exception no. 14
             with the exception dispatcher. */
     ExceptionHandler::register_handler(14, &pagefault_handler);
-    
+
     /* ---- INITIALIZE THE PAGE TABLE -- */
-    
+
     PageTable::init_paging(&kernel_mem_pool,
                            &process_mem_pool,
-                           4 MB); /* We share the first 4MB */
-    
-    PageTable pt;
-    
-    pt.load();
-    
+                           4 MB);
+
+    PageTable pt1;
+
+    pt1.load();
+
     PageTable::enable_paging();
-    
-    Console::puts("WE TURNED ON PAGING!\n");
-    Console::puts("If we see this message, the page tables have been\n");
-    Console::puts("set up mostly correctly.\n");
+
+    /* -- INITIALIZE THE TWO VIRTUAL MEMORY PAGE POOLS -- */
 
     /* -- MOST OF WHAT WE NEED IS SETUP. THE KERNEL CAN START. */
-    
+
     Console::puts("Hello World!\n");
+
+    /* BY DEFAULT WE TEST THE PAGE TABLE IN MAPPED MEMORY!
+       (COMMENT OUT THE FOLLOWING LINE TO TEST THE VM Pools! */
+#define _TEST_PAGE_TABLE_
+
+#ifdef _TEST_PAGE_TABLE_
+
+    /* WE TEST JUST THE PAGE TABLE */
+    GeneratePageTableMemoryReferences(FAULT_ADDR, NACCESS);
+
+#else
+
+    /* WE TEST JUST THE VM POOLS */
+
+    /* -- CREATE THE VM POOLS. */
+
+    /* ---- We define the code pool to be a 256MB segment starting at virtual address 512MB -- */
+    VMPool code_pool(512 MB, 256 MB, &process_mem_pool, &pt1);
+
+    /* ---- We define a 256MB heap that starts at 1GB in virtual memory. -- */
+    VMPool heap_pool(1 GB, 256 MB, &process_mem_pool, &pt1);
     
-    /* -- GENERATE MEMORY REFERENCES */
-    
-    int *foo = (int *) FAULT_ADDR;
-    int i;
+    /* -- NOW THE POOLS HAVE BEEN CREATED. */
 
-    for (i=0; i<NACCESS; i++) {
-        foo[i] = i;
+    Console::puts("VM Pools successfully created!\n");
+
+    /* -- GENERATE MEMORY REFERENCES TO THE VM POOLS */
+
+    Console::puts("I am starting with an extensive test\n");
+    Console::puts("of the VM Pool memory allocator.\n");
+    Console::puts("Please be patient...\n");
+    Console::puts("Testing the memory allocation on code_pool...\n");
+    GenerateVMPoolMemoryReferences(&code_pool, 50, 100);
+    Console::puts("Testing the memory allocation on heap_pool...\n");
+    GenerateVMPoolMemoryReferences(&heap_pool, 50, 100);
+
+#endif
+
+    TestPassed();
+}
+
+void GeneratePageTableMemoryReferences(unsigned long start_address, int n_references) {
+  // This tests just the page table. 
+  int *foo = (int *) start_address;
+  
+  for (int i=0; i<n_references; i++) {
+    foo[i] = i;
+  }
+  
+  Console::puts("DONE WRITING TO MEMORY. Now testing...\n");
+
+  for (int i=0; i<n_references; i++) {
+    if(foo[i] != i) {
+      TestFailed();
     }
+  }
+}
 
-    Console::puts("DONE WRITING TO MEMORY. Press keyboard to continue testing...\n");
-    SimpleKeyboard::wait();
+void GenerateVMPoolMemoryReferences(VMPool *pool, int size1, int size2) {
+  // Here we test the VMPool 
+   current_pool = pool;
+   for(int i=1; i<size1; i++) {
+      int *arr = new int[size2 * i];
+      if(pool->is_legitimate((unsigned long)arr) == false) {
+         TestFailed();
+      }
+      for(int j=0; j<size2*i; j++) {
+         arr[j] = j;
+      }
+      for(int j=size2*i - 1; j>=0; j--) {
+         if(arr[j] != j) {
+            TestFailed();
+         }
+      }
+      delete[] arr;
+   }
+}
 
-    for (i=0; i<NACCESS; i++) {
-        if(foo[i] != i) {
-            Console::puts("TEST FAILED for access number:");
-            Console::putui(i);
-            Console::puts("\n");
-            break;
-        }
-    }
-    if(i == NACCESS) {
-        Console::puts("TEST PASSED.\n");
-    }
+void TestFailed() {
+   Console::puts("Test Failed\n");
+   Console::puts("YOU CAN TURN OFF THE MACHINE NOW.\n");
+   for(;;);
+}
 
-    /* -- STOP HERE */
-    Console::puts("YOU CAN SAFELY TURN OFF THE MACHINE NOW.\n");
-    for(;;);
-
-    /* -- WE DO THE FOLLOWING TO KEEP THE COMPILER HAPPY. */
-    return 1;
+void TestPassed() {
+   Console::puts("Test Passed! Congratulations!\n");
+   Console::puts("YOU CAN SAFELY TURN OFF THE MACHINE NOW.\n");
+   for(;;);
 }
