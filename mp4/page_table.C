@@ -20,23 +20,49 @@ void PageTable::init_paging(ContFramePool * _kernel_mem_pool,
    Console::puts("Initialized Paging System\n");
 }
 
+// void i_to_a(unsigned long i, char * a)
+// {
+//    int j = 0;
+//    while (i > 0)
+//    {
+//       a[j] = (i % 10) + '0';
+//       i = i / 10;
+//       j++;
+//    }
+//    a[j] = 0;
+//    int k = 0;
+//    j--;
+//    while (k < j)
+//    {
+//       char c = a[k];
+//       a[k] = a[j];
+//       a[j] = c;
+//       k++;
+//       j--;
+//    }
+// }
+
 PageTable::PageTable()
 {
    // Allocate a page directory
-   page_directory = (unsigned long *)(kernel_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
+   page_directory = (unsigned long *)(process_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
 
    // Map the first 4MB of memory to the same physical addresses
-   unsigned long *page_table = (unsigned long *)(kernel_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
-
-   page_directory[0] = ((unsigned long)page_table) | 3;
+   unsigned long *page_table = (unsigned long *)(process_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
+   unsigned long * page_directory_v = PDE_address(page_directory);
+   page_directory_v[0] = ((unsigned long)page_table) | 3;
+   unsigned long * page_table_v = PTE_address(page_directory, 0);
    for (unsigned int i = 0; i < Machine::PT_ENTRIES_PER_PAGE; i++)
    {
-      page_table[i] = (i << 12) | 3;
+      page_table_v[i] = (i << 12) | 3;
    }
+   // unused pages
    for (unsigned int i = 1; i < Machine::PT_ENTRIES_PER_PAGE; i++)
    {
-      page_directory[i] = 0 | 2;
+      page_directory_v[i] = 0 | 2;
    }
+   // map the last page directory entry to point to the page directory table itself
+   page_directory_v[Machine::PT_ENTRIES_PER_PAGE - 1] = (unsigned long) page_directory | 3; 
    Console::puts("Constructed Page Table object\n");
 }
 
@@ -44,6 +70,23 @@ PageTable::PageTable()
 void PageTable::load()
 {
    current_page_table = this;
+   // char a[20];
+   // i_to_a((unsigned long)page_directory, a);
+   // Console::puts("Page Directory at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+   // Console::puts("Page Table at ");
+   // i_to_a((unsigned long)page_directory[0], a);
+   // Console::puts(a);
+   // Console::puts("\n");
+   // i_to_a((unsigned long)PDE_address(page_directory), a);
+   // Console::puts("Page Directory Virtual at ");
+   // Console::puts(a);
+   // Console::puts("\n");
+   // Console::puts("Page Table Virtual at ");
+   // i_to_a((unsigned long)PTE_address(page_directory ,0), a);
+   // Console::puts(a);
+   // Console::puts("\n");
    // load the page directory into the cr3 register
    write_cr3((unsigned long)page_directory);
    Console::puts("Loaded page table\n");
@@ -63,15 +106,18 @@ void PageTable::handle_fault(REGS * _r)
 
    unsigned int pde_index = (offending_addr >> 22);
    unsigned int pte_index = (offending_addr >> 12) & 0x3FF;
-   unsigned long * page_directory = current_page_table->page_directory;
+   unsigned long * page_directory = PDE_address(current_page_table->page_directory);
    unsigned long * page_table;
 
    // check if the pde is valid and writable
    if ((page_directory[pde_index] & 1) == 0)
    {
       // generate a valid page table for this pde
-      page_table = (unsigned long *)(kernel_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
+      page_table = (unsigned long *)(process_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
       page_directory[pde_index] = ((unsigned long)page_table) | 3;
+      // convert into logical address
+      page_table = PTE_address(current_page_table->page_directory ,pde_index);
+
       for (unsigned int i = 0; i < Machine::PT_ENTRIES_PER_PAGE; i++)
       {
          page_table[i] = 0 | 2;
@@ -81,7 +127,7 @@ void PageTable::handle_fault(REGS * _r)
       Console::puts("Page Directory Entry not writable\n");
       assert(false);
    }else{
-      page_table = (unsigned long *) (page_directory[pde_index] & 0xFFFFF000);
+      page_table = PTE_address(current_page_table->page_directory ,pde_index);
    }
 
    if ((page_table[pte_index] & 1) == 0)
@@ -98,3 +144,16 @@ void PageTable::handle_fault(REGS * _r)
 
 }
 
+unsigned long *PageTable::PDE_address(unsigned long *p_page_dir)
+{
+   if(paging_enabled == 0) return p_page_dir;
+   unsigned long v_addr = 0xFFFFF000;
+   return (unsigned long *) v_addr;
+}
+
+unsigned long *PageTable::PTE_address(unsigned long *p_page_dir, int pde_index)
+{
+   if(paging_enabled == 0) return (unsigned long *) (p_page_dir[pde_index] & 0xFFFFF000);
+   unsigned long v_addr = 0xFFC00000 | (pde_index) << 12;
+   return (unsigned long *) v_addr;
+}
