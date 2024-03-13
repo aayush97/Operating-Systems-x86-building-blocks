@@ -41,11 +41,26 @@ class PageTable;
 /* V M  P o o l  */
 /*--------------------------------------------------------------------------*/
 
+struct Region{ // region for VM pool
+   unsigned long base_page_no;
+   unsigned long num_pages;
+};
+
 class VMPool { /* Virtual Memory Pool */
 private:
    /* -- DEFINE YOUR VIRTUAL MEMORY POOL DATA STRUCTURE(s) HERE. */
+   PageTable *page_table;
+   unsigned long base_address;
+   unsigned long size;
+   ContFramePool* frame_pool;
+   Region *free_regions;
+   Region *allocated_regions;
+   int num_free_regions;
+   int num_allocated_regions;
 
 public:
+   VMPool *next;
+   VMPool *prev;
    VMPool(unsigned long  _base_address,
           unsigned long  _size,
           ContFramePool *_frame_pool,
