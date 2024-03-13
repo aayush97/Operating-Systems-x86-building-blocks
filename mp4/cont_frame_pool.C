@@ -260,8 +260,9 @@ void ContFramePool::release_frames(unsigned long _first_frame_no)
     {
         if(current->base_frame_no <= _first_frame_no && current->base_frame_no + current->nframes > _first_frame_no)
         {
-            assert(current->get_state(_first_frame_no) == FrameState::HoS);
-            unsigned long frame_no = _first_frame_no;
+            unsigned long first_frame_no = _first_frame_no - current->base_frame_no;
+            assert(current->get_state(first_frame_no) == FrameState::HoS);
+            unsigned long frame_no = first_frame_no;
             current->set_state(frame_no, FrameState::Free);
             frame_no++;
             while(current->get_state(frame_no) == FrameState::Used)
