@@ -9,6 +9,7 @@ unsigned int PageTable::paging_enabled = 0;
 ContFramePool * PageTable::kernel_mem_pool = NULL;
 ContFramePool * PageTable::process_mem_pool = NULL;
 unsigned long PageTable::shared_size = 0;
+VMPool * PageTable::registered_pools_ll = NULL;
 
 void PageTable::init_paging(ContFramePool * _kernel_mem_pool,
                             ContFramePool * _process_mem_pool,
@@ -46,7 +47,6 @@ PageTable::PageTable()
 {
    // Allocate a page directory
    page_directory = (unsigned long *)(process_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
-
    // Map the first 4MB of memory to the same physical addresses
    unsigned long *page_table = (unsigned long *)(process_mem_pool->get_frames(1) * Machine::PAGE_SIZE);
    unsigned long * page_directory_v = PDE_address(page_directory);
@@ -104,6 +104,19 @@ void PageTable::handle_fault(REGS * _r)
    // read the offending address
    unsigned long offending_addr = read_cr2();
 
+   // check if the offending address is legitimate
+   VMPool *head = registered_pools_ll;
+   while(head != NULL){
+      if (head->is_legitimate(offending_addr)) break;
+      head = head->next;
+   }
+   Console::puts("Search ended");
+
+   if(head == NULL && registered_pools_ll != NULL){
+      Console::puts("Not a legitimate address");
+      assert(false);
+   }
+
    unsigned int pde_index = (offending_addr >> 22);
    unsigned int pte_index = (offending_addr >> 12) & 0x3FF;
    unsigned long * page_directory = PDE_address(current_page_table->page_directory);
@@ -156,4 +169,31 @@ unsigned long *PageTable::PTE_address(unsigned long *p_page_dir, int pde_index)
    if(paging_enabled == 0) return (unsigned long *) (p_page_dir[pde_index] & 0xFFFFF000);
    unsigned long v_addr = 0xFFC00000 | (pde_index) << 12;
    return (unsigned long *) v_addr;
+}
+
+void PageTable::register_pool(VMPool * _vm_pool){
+   if (registered_pools_ll == NULL){
+      registered_pools_ll = _vm_pool;
+   }else{
+      _vm_pool->next = registered_pools_ll;
+      registered_pools_ll->prev = _vm_pool;
+      registered_pools_ll = _vm_pool;
+   }
+}
+
+void PageTable::free_page(unsigned long page_no){
+   unsigned int pte_index = page_no & 0x00003FF;
+   unsigned int pde_index = page_no >> 10;
+   unsigned long *page_directory_v = PDE_address(page_directory);
+   // check if page directory entry is valid
+   if (page_directory_v[pde_index] & 1){
+      unsigned long* page_table_v = PTE_address(page_directory, pde_index);
+      // check if page table entry is valid
+      if(page_table_v[pte_index] & 1){
+         unsigned long frame_no = page_table_v[pte_index] >> 12;
+         page_table_v[pte_index] &= 0xFFFFFFFE;
+         process_mem_pool->release_frames(frame_no);
+      }
+   }
+
 }
