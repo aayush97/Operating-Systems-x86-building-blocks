@@ -44,28 +44,6 @@
 /* METHODS FOR CLASS   V M P o o l */
 /*--------------------------------------------------------------------------*/
 
-void i_to_a2(unsigned long i, char *a)
-{
-    int j = 0;
-    while (i > 0)
-    {
-        a[j] = (i % 10) + '0';
-        i = i / 10;
-        j++;
-    }
-    a[j] = 0;
-    int k = 0;
-    j--;
-    while (k < j)
-    {
-        char c = a[k];
-        a[k] = a[j];
-        a[j] = c;
-        k++;
-        j--;
-    }
-}
-
 VMPool::VMPool(unsigned long  _base_address,
                unsigned long  _size,
                ContFramePool *_frame_pool,
@@ -106,17 +84,6 @@ unsigned long VMPool::allocate(unsigned long _size) {
         }
     }
     Console::puts("Allocated region of memory.\n");
-    char a[20];
-    i_to_a2((unsigned long)allocated_regions[num_allocated_regions - 1].base_page_no * Machine::PAGE_SIZE, a);
-    Console::puts("Allocated address from ");
-    Console::puts(a);
-    Console::puts(" to ");
-    i_to_a2((allocated_regions[num_allocated_regions - 1].base_page_no + allocated_regions[num_allocated_regions - 1].num_pages) * Machine::PAGE_SIZE, a);
-    Console::puts(a);
-    Console::puts(" at index ");
-    i_to_a2(num_allocated_regions - 1, a);
-    Console::puts(a);
-    Console::puts("\n");
     return allocated_regions[num_allocated_regions - 1].base_page_no * Machine::PAGE_SIZE;
 }
 
@@ -150,15 +117,6 @@ bool VMPool::is_legitimate(unsigned long _address) {
             return true;
         }
     }
-    // Console::puts("Checked whether address is part of an allocated region.\n");
-    // char a[20];
-    // i_to_a2((unsigned long)_address, a);
-    // Console::puts("Illegitimate address ");
-    // Console::puts(a);
-    // i_to_a2(num_allocated_regions, a);
-    // Console::puts(" from a total of ");
-    // Console::puts(a);
-    // Console::puts(" allocated regions\n");
     return false;
 }
 

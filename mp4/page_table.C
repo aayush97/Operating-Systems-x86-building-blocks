@@ -21,28 +21,6 @@ void PageTable::init_paging(ContFramePool * _kernel_mem_pool,
    Console::puts("Initialized Paging System\n");
 }
 
-// void i_to_a(unsigned long i, char * a)
-// {
-//    int j = 0;
-//    while (i > 0)
-//    {
-//       a[j] = (i % 10) + '0';
-//       i = i / 10;
-//       j++;
-//    }
-//    a[j] = 0;
-//    int k = 0;
-//    j--;
-//    while (k < j)
-//    {
-//       char c = a[k];
-//       a[k] = a[j];
-//       a[j] = c;
-//       k++;
-//       j--;
-//    }
-// }
-
 PageTable::PageTable()
 {
    // Allocate a page directory
@@ -70,24 +48,6 @@ PageTable::PageTable()
 void PageTable::load()
 {
    current_page_table = this;
-   // char a[20];
-   // i_to_a((unsigned long)page_directory, a);
-   // Console::puts("Page Directory at ");
-   // Console::puts(a);
-   // Console::puts("\n");
-   // Console::puts("Page Table at ");
-   // i_to_a((unsigned long)page_directory[0], a);
-   // Console::puts(a);
-   // Console::puts("\n");
-   // i_to_a((unsigned long)PDE_address(page_directory), a);
-   // Console::puts("Page Directory Virtual at ");
-   // Console::puts(a);
-   // Console::puts("\n");
-   // Console::puts("Page Table Virtual at ");
-   // i_to_a((unsigned long)PTE_address(page_directory ,0), a);
-   // Console::puts(a);
-   // Console::puts("\n");
-   // load the page directory into the cr3 register
    write_cr3((unsigned long)page_directory);
    Console::puts("Loaded page table\n");
 }
@@ -110,8 +70,7 @@ void PageTable::handle_fault(REGS * _r)
       if (head->is_legitimate(offending_addr)) break;
       head = head->next;
    }
-   Console::puts("Search ended");
-
+   
    if(head == NULL && registered_pools_ll != NULL){
       Console::puts("Not a legitimate address");
       assert(false);
