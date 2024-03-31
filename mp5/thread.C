@@ -209,3 +209,12 @@ Thread * Thread::CurrentThread() {
 /* Return the currently running thread. */
     return current_thread;
 }
+
+
+char * Thread::getCargo(){
+    return cargo;
+}
+
+void Thread::setCargo(Thread * thread){
+    cargo = (char *) thread;
+}

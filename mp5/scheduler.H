@@ -54,10 +54,26 @@
 /* SCHEDULER */
 /*--------------------------------------------------------------------------*/
 
+class FIFOQueue{
+private:
+   Thread* queue_head;
+   Thread* queue_tail;
+
+public:
+   FIFOQueue();
+
+   Thread* pop();
+
+   void add(Thread* thread);
+
+};
+
 class Scheduler {
 
   /* The scheduler may need private members... */
-  
+  FIFOQueue queue;
+  Thread * cur_thread;
+
 public:
 
    Scheduler();
