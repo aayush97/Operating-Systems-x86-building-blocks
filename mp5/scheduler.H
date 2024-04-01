@@ -54,25 +54,33 @@
 /* SCHEDULER */
 /*--------------------------------------------------------------------------*/
 
-class FIFOQueue{
+class ReadyQueue
+{
 private:
    Thread* queue_head;
    Thread* queue_tail;
+   int length;
 
 public:
-   FIFOQueue();
+   ReadyQueue();
 
    Thread* pop();
 
    void add(Thread* thread);
 
+   bool delete_thread(Thread* thread);
+
+   int get_length(){
+     return length;
+   }
+
+   void print_queue();
 };
 
 class Scheduler {
 
   /* The scheduler may need private members... */
-  FIFOQueue queue;
-  Thread * cur_thread;
+  ReadyQueue* queue;
 
 public:
 
