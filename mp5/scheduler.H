@@ -80,6 +80,7 @@ public:
 class Scheduler {
 
   /* The scheduler may need private members... */
+protected:
   ReadyQueue* queue;
 
 public:
@@ -115,6 +116,10 @@ public:
   
 };
 	
-	
+
+class RRScheduler : public Scheduler {
+public:
+    void yield();
+};
 
 #endif

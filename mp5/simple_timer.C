@@ -24,7 +24,9 @@
 #include "console.H"
 #include "interrupts.H"
 #include "simple_timer.H"
+#include "scheduler.H"
 
+extern Scheduler *SYSTEM_SCHEDULER;
 /*--------------------------------------------------------------------------*/
 /* CONSTRUCTOR */
 /*--------------------------------------------------------------------------*/
@@ -97,4 +99,19 @@ void SimpleTimer::wait(unsigned long _seconds) {
     while((seconds <= then_seconds) && (ticks < now_ticks));
 }
 
+
+void EOQTimer::handle_interrupt(REGS *_r) {
+    /* Increment our "ticks" count */
+    ticks++;
+
+    /* Whenever a second is over, we update counter accordingly. */
+    if (ticks >= hz)
+    {
+        seconds++;
+        ticks = 0;
+        Console::puts("50 ms has passed\n");
+        SYSTEM_SCHEDULER->resume(Thread::CurrentThread());
+        SYSTEM_SCHEDULER->yield();
+    }
+}
 

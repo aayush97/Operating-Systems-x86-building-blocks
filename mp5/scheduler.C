@@ -169,8 +169,8 @@ void Scheduler::resume(Thread * _thread) {
   Console::puts("Resuming.\n");
   assert(_thread != NULL);
   queue->add(_thread);
-  if(!Machine::interrupts_enabled())
-    Machine::enable_interrupts();
+  // if(!Machine::interrupts_enabled())
+  //   Machine::enable_interrupts();
 }
 
 void Scheduler::add(Thread * _thread) {
@@ -183,4 +183,9 @@ void Scheduler::terminate(Thread * _thread) {
     return;
   }
   assert(false);
+}
+
+void RRScheduler::yield() {
+  Machine::outportb(0x20, 0x20);
+  Scheduler::yield();
 }

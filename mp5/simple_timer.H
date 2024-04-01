@@ -34,7 +34,7 @@
 
 class SimpleTimer : public InterruptHandler {
 
-private:
+protected:
 
   /* How long has the system been running? */
   unsigned long seconds; 
@@ -65,6 +65,17 @@ public :
   /* Wait for a particular time to be passed. The implementation is based 
      on busy looping! */
 
+};
+
+class EOQTimer : public SimpleTimer {
+public:
+  EOQTimer(int _hz) : SimpleTimer(_hz) {}
+  /* Initialize the EOQ timer, and set its frequency. */
+
+  virtual void handle_interrupt(REGS *_r);
+  /* This must be installed as the interrupt handler for the EOQ timer 
+     when the system gets initialized. (e.g. in "kernel.C")  
+  */
 };
 
 #endif
