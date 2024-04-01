@@ -90,11 +90,6 @@ ReadyQueue::ReadyQueue(){
 
 Thread* ReadyQueue::pop(){
   if (queue_head==NULL){
-    char a[10];
-    i_to_a((unsigned long)queue_tail, a);
-    Console::puts("Queue: ");
-    print_queue();
-    Console::puts("\n");
     assert(length == 0);
     return NULL;
   }
@@ -118,8 +113,6 @@ void ReadyQueue::add(Thread * thread){
     thread->setCargo(NULL);
     queue_tail = thread;
   }
-  Console::puts("Adding thread ");
-  print_queue();
   length++;
 }
 
@@ -155,57 +148,37 @@ Scheduler::Scheduler() {
 
 void Scheduler::yield() {
   Console::puts("Yielding.\n");
-  char a[10];
-  i_to_a(queue->get_length(), a);
-  Console::puts("Length of ready queue: ");
-  Console::puts(a);
-  Console::puts("\n");
-  // if(Machine::interrupts_enabled()){
-  //   Machine::disable_interrupts();
-  // }
+  if(Machine::interrupts_enabled()){
+    Machine::disable_interrupts();
+  }
 
   Thread* next_thread = queue->pop();
   if (next_thread == NULL) {
     assert(queue->get_length() == 0);
     Console::puts("No thread to run.\n");
   }
-  i_to_a(queue->get_length(), a);
-  Console::puts("Length of ready queue: ");
-  Console::puts(a);
-  Console::puts("\n");
-  // move the cur_thread to the end of the ready queue
-  // if (Thread::CurrentThread() != NULL) {
-  //   queue.add(Thread::CurrentThread());
-  // }
   Thread::dispatch_to(next_thread);
-  // if(!Machine::interrupts_enabled()){
-  //   Machine::enable_interrupts();
-  // }
+  if(!Machine::interrupts_enabled()){
+    Machine::enable_interrupts();
+  }
 }
 
 void Scheduler::resume(Thread * _thread) {
-  // if (Machine::interrupts_enabled())
-  //   Machine::disable_interrupts();
+  if (Machine::interrupts_enabled())
+    Machine::disable_interrupts();
   Console::puts("Resuming.\n");
   assert(_thread != NULL);
   queue->add(_thread);
-  char a[10];
-  i_to_a(queue->get_length(), a);
-  Console::puts("Length of ready queue: ");
-  Console::puts(a);
-  Console::puts("\n");
+  if(!Machine::interrupts_enabled())
+    Machine::enable_interrupts();
 }
 
 void Scheduler::add(Thread * _thread) {
-  // if (Machine::interrupts_enabled())
-  //   Machine::disable_interrupts();
-  assert(_thread != NULL);
   resume(_thread);
 }
 
 void Scheduler::terminate(Thread * _thread) {
   if(Thread::CurrentThread()->ThreadId() == _thread->ThreadId()){
-    // bool success = queue.delete_thread(_thread);
     queue->delete_thread(_thread);
     return;
   }
