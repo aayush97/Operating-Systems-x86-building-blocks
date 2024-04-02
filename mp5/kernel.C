@@ -251,14 +251,17 @@ int main() {
                  we enable interrupts correctly. If we forget to do it,
                  the timer "dies". */
 
-    EOQTimer timer(500); /* timer ticks every 10ms. */
+    // SimpleTimer timer(100); /* timer ticks every 10ms. */
+    // InterruptHandler::register_handler(0, &timer);
+
+    EOQTimer timer(50); /* timer ticks every 50ms. */
     InterruptHandler::register_handler(0, &timer);
     /* The Timer is implemented as an interrupt handler. */
 
 #ifdef _USES_SCHEDULER_
 
     /* -- SCHEDULER -- IF YOU HAVE ONE -- */
- 
+    // SYSTEM_SCHEDULER = new Scheduler();
     SYSTEM_SCHEDULER = new RRScheduler();
 
 #endif
