@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "assert.C": "cpp",
+        "blocking_disk.C": "cpp",
+        "simple_disk.C": "cpp",
+        "kernel.C": "cpp",
+        "thread.C": "cpp",
+        "machine.C": "cpp"
+    }
+}
