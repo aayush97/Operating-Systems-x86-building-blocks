@@ -45,104 +45,87 @@
 /* METHODS FOR CLASS   S c h e d u l e r  */
 /*--------------------------------------------------------------------------*/
 
-void i_to_a(unsigned long i, char *a)
+void Queue::print_queue()
 {
-  int j = 0;
-  while (i > 0)
-  {
-    a[j] = (i % 10) + '0';
-    i = i / 10;
-    j++;
-  }
-  a[j] = 0;
-  int k = 0;
-  j--;
-  while (k < j)
-  {
-    char c = a[k];
-    a[k] = a[j];
-    a[j] = c;
-    k++;
-    j--;
-  }
-}
-
-void ReadyQueue::print_queue()
-{
-  Thread *current = queue_head;
+  QueueNode *current = head;
   while (current != NULL)
   {
-    char a[10];
-    i_to_a((unsigned long) current, a);
-    Console::puts(a);
+    Console::putui((unsigned int) current->thread);
     Console::puts(" ");
-    current = (Thread *)current->getCargo();
+    current = current->next;
   }
   Console::puts("\n");
 }
 
-ReadyQueue::ReadyQueue(){
-  queue_head = NULL;
-  queue_tail = NULL;
+Queue::Queue(){
+  head = NULL;
+  tail = NULL;
   length = 0;
 }
 
+int Queue::get_length(){
+  return length;
+}
 
-Thread* ReadyQueue::pop(){
-  if (queue_head==NULL){
+Thread* Queue::pop(){
+  if (head==NULL){
     assert(length == 0);
     return NULL;
   }
-  Thread* popped_thread = queue_head;
-  queue_head = (Thread *) queue_head->getCargo();
-  if (queue_head==NULL){
-    queue_tail = NULL;
+  QueueNode* popped_node = head;
+  head = popped_node->next;
+  if (head==NULL){
+    tail = NULL;
   }
-  popped_thread->setCargo(NULL);
+  Thread* popped_thread = popped_node->thread;
+  delete popped_node;
   length--;
   return popped_thread;
 }
 
-void ReadyQueue::add(Thread * thread){
-  if (queue_head==NULL){
-    queue_head = thread;
-    queue_tail = thread;
-    thread->setCargo(NULL);
+void Queue::add(Thread * thread){
+  QueueNode* new_node = new QueueNode(thread, NULL);
+  if (head==NULL){
+    head = new_node;
+    tail = new_node;
   }else{
-    queue_tail->setCargo(thread);
-    thread->setCargo(NULL);
-    queue_tail = thread;
+    tail->next = new_node;
+    tail = new_node;
   }
   length++;
 }
 
-bool ReadyQueue::delete_thread(Thread * thread){
-  Thread* current = queue_head;
-  Thread* previous = NULL;
+bool Queue::delete_elem(Thread * thread){
+  QueueNode* current = head;
+  QueueNode* previous = NULL;
   while(current != NULL){
-    if (current->ThreadId() == thread->ThreadId()){
-      if(previous != NULL){
-        previous->setCargo((Thread *)current->getCargo());
-        if (queue_tail->ThreadId() == thread->ThreadId()){
-          queue_tail = previous;
+    if (current->thread->ThreadId() == thread->ThreadId()){
+      if(previous != NULL){ // deleted node not the head
+        previous->next = current->next;
+        if (tail->thread->ThreadId() == thread->ThreadId()){ // deleted node is the last node
+          tail = previous;
+          delete current;
           length--;
+          return true;
         }
-      }else{
-        queue_head = (Thread *)current->getCargo();
-        if (queue_tail->ThreadId() == thread->ThreadId()){
-          queue_tail = NULL;
+      }else{ // deleted node is the head
+        head = current->next;
+        if (tail->thread->ThreadId() == thread->ThreadId()){// only one node in the queue
+          tail = NULL;
+          delete current;
           length--;
+          return true;
         }
       }
     }
     previous = current;
-    current = (Thread *)current->getCargo();
+    current = current->next;
   }
   return false;
 }
 
 Scheduler::Scheduler() {
-  queue = new ReadyQueue();
+  ready_queue = new Queue();
   Console::puts("Constructed Scheduler.\n");
 }
 
@@ -152,9 +135,9 @@ void Scheduler::yield() {
     Machine::disable_interrupts();
   }
 
-  Thread* next_thread = queue->pop();
+  Thread* next_thread = ready_queue->pop();
   if (next_thread == NULL) {
-    assert(queue->get_length() == 0);
+    assert(ready_queue->get_length() == 0);
     Console::puts("No thread to run.\n");
   }
   Thread::dispatch_to(next_thread);
@@ -168,7 +151,7 @@ void Scheduler::resume(Thread * _thread) {
     Machine::disable_interrupts();
   Console::puts("Resuming.\n");
   assert(_thread != NULL);
-  queue->add(_thread);
+  ready_queue->add(_thread);
   // if(!Machine::interrupts_enabled())
   //   Machine::enable_interrupts();
 }
@@ -179,7 +162,7 @@ void Scheduler::add(Thread * _thread) {
 
 void Scheduler::terminate(Thread * _thread) {
   if(Thread::CurrentThread()->ThreadId() == _thread->ThreadId()){
-    queue->delete_thread(_thread);
+    ready_queue->delete_elem(_thread);
     return;
   }
   assert(false);

@@ -53,35 +53,55 @@
 /*--------------------------------------------------------------------------*/
 /* SCHEDULER */
 /*--------------------------------------------------------------------------*/
+struct QueueNode{
+   Thread* thread;
+   QueueNode* next;
+   public:
+      QueueNode(Thread* _thread, QueueNode* _next): thread(_thread), next(_next){}
+};
 
-class ReadyQueue
-{
-private:
-   Thread* queue_head;
-   Thread* queue_tail;
+class Queue{
+   QueueNode* head;
+   QueueNode* tail;
    int length;
-
 public:
-   ReadyQueue();
-
+   Queue();
    Thread* pop();
-
    void add(Thread* thread);
-
-   bool delete_thread(Thread* thread);
-
-   int get_length(){
-     return length;
-   }
-
+   bool delete_elem(Thread* thread);
+   int get_length();
    void print_queue();
 };
+
+// class ReadyQueue
+// {
+// private:
+//    Thread* queue_head;
+//    Thread* queue_tail;
+//    int length;
+
+// public:
+//    ReadyQueue();
+
+//    Thread* pop();
+
+//    void add(Thread* thread);
+
+//    bool delete_thread(Thread* thread);
+
+//    int get_length(){
+//      return length;
+//    }
+
+//    void print_queue();
+// };
 
 class Scheduler {
 
   /* The scheduler may need private members... */
 protected:
-  ReadyQueue* queue;
+  Queue* ready_queue;
+  Queue* disk_queue;
 
 public:
 
