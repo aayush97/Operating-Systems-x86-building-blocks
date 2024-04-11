@@ -24,12 +24,15 @@
 #include "blocking_disk.H"
 #include "machine.H"
 
+extern Scheduler *SYSTEM_SCHEDULER;
+
 /*--------------------------------------------------------------------------*/
 /* CONSTRUCTOR */
 /*--------------------------------------------------------------------------*/
 
 BlockingDisk::BlockingDisk(DISK_ID _disk_id, unsigned int _size) 
   : SimpleDisk(_disk_id, _size) {
+    disk_queue = new Queue();
 }
 
 /*--------------------------------------------------------------------------*/
@@ -50,4 +53,11 @@ void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf) {
   if(Machine::interrupts_enabled()) Machine::disable_interrupts();
   SimpleDisk::write(_block_no, _buf);
   Machine::enable_interrupts();
+}
+
+void BlockingDisk::wait_until_ready(){
+  if(!SimpleDisk::is_ready()){
+    disk_queue->add(Thread::CurrentThread());
+    SYSTEM_SCHEDULER->yield();
+  }
 }
