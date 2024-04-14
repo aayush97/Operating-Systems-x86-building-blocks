@@ -180,7 +180,7 @@ void fun2() {
 
        /* -- Display */
        for (int i = 0; i < DISK_BLOCK_SIZE; i++) {
-           Console::putch(buf[i]);
+           Console::puti((int)buf[i]);
        }
 
        Console::puts("Writing a block to disk...\n");
@@ -291,7 +291,7 @@ int main() {
     /* -- DISK DEVICE -- */
 
     SYSTEM_DISK = new BlockingDisk(DISK_ID::MASTER, SYSTEM_DISK_SIZE);
-   
+    SYSTEM_SCHEDULER->add_disk(SYSTEM_DISK);
     /* NOTE: The timer chip starts periodically firing as 
              soon as we enable interrupts.
              It is important to install a timer handler, as we 
@@ -340,7 +340,8 @@ int main() {
     /* -- KICK-OFF THREAD1 ... */
 
     Console::puts("STARTING THREAD 1 ...\n");
-    Thread::dispatch_to(thread1);
+    SYSTEM_SCHEDULER->yield();
+    // Thread::dispatch_to(thread1);
 
     /* -- AND ALL THE REST SHOULD FOLLOW ... */
  
