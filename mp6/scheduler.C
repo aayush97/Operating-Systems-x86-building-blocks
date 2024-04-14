@@ -126,6 +126,7 @@ bool Queue::delete_elem(Thread * thread){
 
 Scheduler::Scheduler() {
   ready_queue = new Queue();
+  disk = NULL;
   Console::puts("Constructed Scheduler.\n");
 }
 
@@ -134,8 +135,14 @@ void Scheduler::yield() {
   if(Machine::interrupts_enabled()){
     Machine::disable_interrupts();
   }
-
-  Thread* next_thread = ready_queue->pop();
+  Thread *next_thread = NULL;
+  if(disk!=NULL && disk->disk_queue->get_length()>0 && disk->is_ready()){
+    next_thread = disk->disk_queue->pop();
+    Console::puts("Running disk thread\n");
+  }else{
+    next_thread = ready_queue->pop();
+    Console::puts("Running normal thread\n");
+  }
   if (next_thread == NULL) {
     assert(ready_queue->get_length() == 0);
     Console::puts("No thread to run.\n");
@@ -166,6 +173,10 @@ void Scheduler::terminate(Thread * _thread) {
     return;
   }
   assert(false);
+}
+
+void Scheduler::add_disk(BlockingDisk* _disk){
+ disk = _disk; 
 }
 
 void RRScheduler::yield() {

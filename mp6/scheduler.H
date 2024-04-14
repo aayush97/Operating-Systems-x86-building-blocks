@@ -20,6 +20,7 @@
 /*--------------------------------------------------------------------------*/
 
 #include "thread.H"
+#include "blocking_disk.H"
 
 /*--------------------------------------------------------------------------*/
 /* !!! IMPLEMENTATION HINT !!! */
@@ -101,7 +102,7 @@ class Scheduler {
   /* The scheduler may need private members... */
 protected:
   Queue* ready_queue;
-  Queue* disk_queue;
+  BlockingDisk* disk;
 
 public:
 
@@ -133,6 +134,8 @@ public:
    /* Remove the given thread from the scheduler in preparation for destruction
       of the thread. 
       Graciously handle the case where the thread wants to terminate itself.*/
+
+   void add_disk(BlockingDisk* _disk);
   
 };
 	
