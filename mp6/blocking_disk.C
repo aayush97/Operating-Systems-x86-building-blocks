@@ -23,6 +23,8 @@
 #include "console.H"
 #include "blocking_disk.H"
 #include "machine.H"
+#include "thread.H"
+#include "scheduler.H"
 
 extern Scheduler *SYSTEM_SCHEDULER;
 
@@ -40,24 +42,30 @@ BlockingDisk::BlockingDisk(DISK_ID _disk_id, unsigned int _size)
 /*--------------------------------------------------------------------------*/
 
 void BlockingDisk::read(unsigned long _block_no, unsigned char * _buf) {
-  // -- REPLACE THIS!!!
   if(Machine::interrupts_enabled()) Machine::disable_interrupts();
   SimpleDisk::read(_block_no, _buf);
-  Machine::enable_interrupts();
-
+  // if (!Machine::interrupts_enabled())
+  //   Machine::enable_interrupts();
 }
 
 
 void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf) {
-  // -- REPLACE THIS!!!
   if(Machine::interrupts_enabled()) Machine::disable_interrupts();
   SimpleDisk::write(_block_no, _buf);
-  Machine::enable_interrupts();
+  // if(!Machine::interrupts_enabled()) 
+  //   Machine::enable_interrupts();
 }
 
 void BlockingDisk::wait_until_ready(){
-  if(!SimpleDisk::is_ready()){
+  // Console::puts("wait until ready\n");
+  while(!SimpleDisk::is_ready()){
+    assert(disk_queue->get_length()==0); // for single thread
     disk_queue->add(Thread::CurrentThread());
     SYSTEM_SCHEDULER->yield();
   }
+}
+
+bool BlockingDisk::is_ready(){
+  Console::puts("Is ready from inside blocking disk\n");
+  return SimpleDisk::is_ready();
 }
