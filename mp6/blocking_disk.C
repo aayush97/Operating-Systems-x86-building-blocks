@@ -43,7 +43,11 @@ BlockingDisk::BlockingDisk(DISK_ID _disk_id, unsigned int _size)
 
 void BlockingDisk::read(unsigned long _block_no, unsigned char * _buf) {
   if(Machine::interrupts_enabled()) Machine::disable_interrupts();
-  SimpleDisk::read(_block_no, _buf);
+  if (is_ready()){
+    SimpleDisk::read(_block_no, _buf);
+  }else{
+    wait_until_ready();
+  }
   // if (!Machine::interrupts_enabled())
   //   Machine::enable_interrupts();
 }
@@ -51,7 +55,11 @@ void BlockingDisk::read(unsigned long _block_no, unsigned char * _buf) {
 
 void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf) {
   if(Machine::interrupts_enabled()) Machine::disable_interrupts();
-  SimpleDisk::write(_block_no, _buf);
+  if (is_ready()){
+    SimpleDisk::write(_block_no, _buf);
+  }else{
+    wait_until_ready();
+  }
   // if(!Machine::interrupts_enabled()) 
   //   Machine::enable_interrupts();
 }
@@ -59,7 +67,6 @@ void BlockingDisk::write(unsigned long _block_no, unsigned char * _buf) {
 void BlockingDisk::wait_until_ready(){
   // Console::puts("wait until ready\n");
   while(!SimpleDisk::is_ready()){
-    assert(disk_queue->get_length()==0); // for single thread
     disk_queue->add(Thread::CurrentThread());
     SYSTEM_SCHEDULER->yield();
   }

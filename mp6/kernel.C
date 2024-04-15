@@ -150,9 +150,29 @@ void fun1() {
     for(int j = 0;; j++) {
 
        Console::puts("FUN 1 IN ITERATION["); Console::puti(j); Console::puts("]\n");
+       
+    //    unsigned char buf[DISK_BLOCK_SIZE];
+    //    int read_block = 1;
+    //    int write_block = 0;
 
        for (int i = 0; i < 10; i++) {
            Console::puts("FUN 1: TICK ["); Console::puti(i); Console::puts("]\n");
+           /* -- Read */
+        //    Console::puts("Reading a block from disk...\n");
+        //    SYSTEM_DISK->read(read_block, buf);
+
+        //    /* -- Display */
+        //    for (int i = 0; i < DISK_BLOCK_SIZE; i++)
+        //    {
+        //        Console::puti((int)buf[i]);
+        //    }
+
+        //    Console::puts("Writing a block to disk...\n");
+        //    SYSTEM_DISK->write(write_block, buf);
+
+        //    /* -- Move to next block */
+        //    write_block = read_block;
+        //    read_block = (read_block + 1) % 10;
        }
 
        pass_on_CPU(thread2);
