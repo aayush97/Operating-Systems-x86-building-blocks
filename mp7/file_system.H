@@ -44,10 +44,10 @@ class Inode
 
 private:
   long id; // File "name"
-
+  bool free;
   /* You will need additional information in the inode, such as allocation 
      information. */
-
+  unsigned int block_number;
   FileSystem *fs; // It may be handy to have a pointer to the File system.
                   // For example when you need a new block or when you want
                   // to load or save the inode list. (Depends on your
@@ -55,6 +55,8 @@ private:
 
   /* You may need a few additional functions to help read and store the 
      inodes from and to disk. */
+   void read_from_disk(unsigned char *_buf);
+   void write_to_disk(unsigned char *_buf);
 };
 
 /*--------------------------------------------------------------------------*/
@@ -74,7 +76,7 @@ class FileSystem
 
 private:
   /* -- DEFINE YOUR FILE SYSTEM DATA STRUCTURES HERE. */
-
+  static const int BLOCK_SIZE = 512;
   SimpleDisk *disk;
   unsigned int size;
 
